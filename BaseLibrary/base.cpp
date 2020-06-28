@@ -10,16 +10,14 @@ int get_min_coeff(int idx, long long word, int cols) {
   return -1; // TODO: throw exception
 }
 
-struct synd_wc {
+struct synd_entry {
   long long s, c;
-  int w,l;
-  bool appr;
-  synd_wc(long long s, long long c, int w, int l, bool appr) {
+  int w, l;
+  synd_entry(long long s, long long c, int w, int l) {
     this->s = s;
     this->c = c;
     this->w = w;
     this->l = l;
-    this->appr = appr;
   }
 };
 
@@ -34,35 +32,23 @@ int dist(long long a, long long b) {
 }
 
 int add_new_leader(list<set<long long>>& dims, RightPayload payload, long long leader, int total_cols) {
-  long long right_leader_part = leader % (1LL << payload.cols);
-  long long left_leader_part = leader >> payload.cols;
-  int left_part_cols = total_cols - payload.cols;
-  set<long long>::iterator iter = payload.codewords.begin();
-  long long power = 1LL << (left_part_cols - 1);
-  for (int j = 0; j < left_part_cols; j++, ++iter, power >>= 1) {
-    if (left_leader_part & power) {
-      right_leader_part ^= *iter;
-    }
-  }
-  //NOT IMPLEMENTED
-  //go through dims and add leader only if all possible of vectors from dim and this one exist within leader space
+  //TODO: go through dims and add leader to dim only if all possible combinations 
+  //of vectors from dim with leader exist within said dim
   set<long long> new_leader_set;
-  new_leader_set.insert(right_leader_part);
+  new_leader_set.insert(leader);
   dims.push_back(new_leader_set);
   return 1;
 }
 
 list<set<long long>> get_potential_leaders(vector<long long> H, RightPayload payload, int d) {
-  queue<synd_wc*> q;
+  queue<synd_entry*> q;
   set<long long> was;
   int r = payload.cols;
   int actual_k = payload.rows;
   int n = H.size();
   long long nm = 1LL << (n - 1);
   for (int i = 0; i < n; i++, nm >>= 1) {
-    //long long nm = 1LL << i;
-    bool appr = i >= actual_k;
-    q.push(new synd_wc(H[i], nm, 1, n-1-i, appr));
+    q.push(new synd_entry(H[i], nm, 1, n-1-i));
     was.insert(H[i]);
   }
   int w = 1;
@@ -76,24 +62,21 @@ list<set<long long>> get_potential_leaders(vector<long long> H, RightPayload pay
     //std::cout << w << endl;
     int q_s = q.size();
     for (int rrr = 0; rrr < q_s; rrr++) {
-      synd_wc* el = q.front();
+      synd_entry* el = q.front();
       for (int j = el->l + 1; j < n; j++) {
         long long nr = el->s ^ H[n - 1 - j];
         if (nr != 0) {
           if (was.find(nr) == was.end()) {
             if (!(el->c & (1LL << j))) {
               long long c = el->c | (1LL << j);
-              bool appr = el->appr && j >= actual_k;
               if (w >= d) {
                 //std::cout << c << endl;
-                //if (appr) {
                   //int v = add_new_leader(dims, payload, c, n);
                   //if (v > max) {
                     //max = v;
-                  //}
                   //result.push_back(c);
               }
-              q.push(new synd_wc(nr, c, w, j, appr));
+              q.push(new synd_entry(nr, c, w, j));
             }
             ns++;
             was.insert(nr);
@@ -106,7 +89,7 @@ list<set<long long>> get_potential_leaders(vector<long long> H, RightPayload pay
   }
   while (!q.empty()) {
     if (w >= d) {
-      add_new_leader(dims, payload, q.front()->c, n);
+      add_new_leader(dims, payload, q.front()->s, n);
     }
     delete q.front();
     q.pop();
