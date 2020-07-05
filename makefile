@@ -1,4 +1,4 @@
-all: CodeTheoryDiploma CodeTheoryDiplomaReusable
+all: CodeTheoryDiploma
 
 CodeTheoryDiploma: Main/source.o libs/libbound.so libs/libbase.so libs/libgenerate.so
 	g++ -g -Llibs -lbase -lbound -lgenerate -o ctd Main/source.o

@@ -16,9 +16,11 @@
 *.dylib
 *.dll
 
-# Fortran module files
-*.mod
-*.smod
+# Providers
+BaseProvider/*
+BoundProvider/*
+SplanFormProvider/*
+Generator/*
 
 # Compiled Static libraries
 *.lai
@@ -27,6 +29,5 @@
 *.lib
 
 # Executables
-*.exe
-*.out
-*.app
+ctd
+ctd_reusable

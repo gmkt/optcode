@@ -17,8 +17,14 @@ int main(int argc, char *argv[]) {
   int k = 1;
   list<RightPayload> matrices{ m };
   // make 10 steps
+  list<strategy_step> strategy;
   for (int i = 0; i < 10; i++) {
-    matrices = step_matrices(matrices, d);
+    strategy.push_back(strategy_step(1, 1, 1));
+  }
+  //strategy.push_back(strategy_step(2, 1000, 5));
+  list<strategy_step>::iterator it = strategy.begin();
+  for (int i = 0; i < 10; i++, ++it) {
+    matrices = step_matrices(matrices, *it, d);
   }
 }
 

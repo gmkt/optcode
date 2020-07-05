@@ -21,6 +21,24 @@ struct synd_entry {
   }
 };
 
+struct bucket {
+  list<long long> leaders;
+  long long ml;
+  bucket(list<long long> leaders, long long ml) {
+    this->ml = ml;
+    this->leaders = leaders;
+  }
+};
+
+int weight(long long c) {
+  int d = 0;
+  while (c > 0) {
+    if (c % 2) d++;
+    c >>= 1;
+  }
+  return d;
+}
+
 int dist(long long a, long long b) {
   long long c = a ^ b;
   int d = 0;
@@ -31,16 +49,65 @@ int dist(long long a, long long b) {
   return d;
 }
 
-int add_new_leader(list<set<long long>>& dims, RightPayload payload, long long leader, int total_cols) {
-  //TODO: go through dims and add leader to dim only if all possible combinations 
-  //of vectors from dim with leader exist within said dim
-  set<long long> new_leader_set;
-  new_leader_set.insert(leader);
-  dims.push_back(new_leader_set);
-  return 1;
+long long add_new_leader(long long leader, vector<bucket>& buckets, strategy_step st, long long bucket_num) {
+  //TODO: make it with my special bucket algorythm (add number of buckets and distance within one to strategy)
+  //Bucket algorythm: divide all leaders into buckets. Within one bucket all leaders are not further than specified distance from leader
+  //of the bucket. Bucket size is limited; add after exceedance only if cannot put into any other bucket
+  //- if leaders are distributed unevenly then rearrange(???? takes a lot of time).
+  long long bucket_fits = -1;
+  for (long long i = 0; i < buckets.size(); i++) {
+    if (dist(buckets[i].ml, leader) <= st.dist) {
+      if (buckets[i].leaders.size() < bucket_num) {
+        buckets[i].leaders.push_back(leader);
+        return i;
+      } else if (bucket_fits == -1) {
+        bucket_fits = i;
+      }
+    }
+  }
+  if (buckets.size() < bucket_num) {
+    list<long long> leaders;
+    buckets.push_back(bucket(leaders, leader));
+    return buckets.size() - 1;
+  } else {
+    if (bucket_fits == -1) {
+      std::cout << "UNFITTABLE **** " << leader << "\n";
+      throw -1;
+    }
+    buckets[bucket_fits].leaders.push_back(leader);
+    return bucket_fits;
+  }
 }
 
-list<set<long long>> get_potential_leaders(vector<long long> H, RightPayload payload, int d) {
+int check_and_update_dim(long long a, long long b, map<long long, long long> all_leaders, list<vector<long long>>& dims, int d) {
+  long long c = a ^ b;
+  int w = weight(c);
+  if (w >= d) {
+    map<long long, long long>::iterator cur_it = all_leaders.find(c);
+    if (cur_it != all_leaders.end()) {
+      vector<long long> v;
+      v.push_back(a);
+      v.push_back(b);
+      dims.push_back(v);
+    }
+  }
+  return w;
+}
+
+void sift_through_buckets(map<long long, long long>::iterator it, vector<bucket> buckets, strategy_step st, int d, list<vector<long long>>& dims, map<long long, long long> all_leaders) {
+  for (long long i = 0; i < buckets.size(); i++) {
+    if (it->second != i) {
+      int w = check_and_update_dim(it->first, buckets[i].ml, all_leaders, dims, d);
+      if (w + st.dist >= d) {
+        for (list<long long>::iterator cur_it = buckets[i].leaders.begin(); cur_it != buckets[i].leaders.end(); ++cur_it) {
+          check_and_update_dim(it->first, *cur_it, all_leaders, dims, d);
+        }
+      }
+    }
+  }
+}
+
+list<vector<long long>> get_potential_leaders(vector<long long> H, RightPayload payload, strategy_step st, int d) {
   queue<synd_entry*> q;
   set<long long> was;
   int r = payload.cols;
@@ -54,8 +121,15 @@ list<set<long long>> get_potential_leaders(vector<long long> H, RightPayload pay
   int w = 1;
   long long ns = n;
   long long N = (1LL << r) - 1;
+  long long bucket_num = (N / st.msize);
   list<long long> result;
-  list<set<long long>> dims;
+  map<long long, long long> all_leaders;
+  list<vector<long long>> dims;
+  vector<bucket> buckets;
+  if (st.k_step != 1) {
+    buckets.reserve(bucket_num);
+  }
+  list<vector<long long>> res;
   int max = 0;
   while (ns < N) {
     w++;
@@ -70,6 +144,13 @@ list<set<long long>> get_potential_leaders(vector<long long> H, RightPayload pay
             if (!(el->c & (1LL << j))) {
               long long c = el->c | (1LL << j);
               if (w >= d) {
+                if (st.k_step == 1) {
+                  vector<long long> v;
+                  v.push_back(nr);
+                  res.push_back(v);
+                } else {
+                  all_leaders[nr] = add_new_leader(nr, buckets, st, bucket_num);
+                }
                 //std::cout << c << endl;
                   //int v = add_new_leader(dims, payload, c, n);
                   //if (v > max) {
@@ -88,18 +169,23 @@ list<set<long long>> get_potential_leaders(vector<long long> H, RightPayload pay
     }
   }
   while (!q.empty()) {
-    if (w >= d) {
-      add_new_leader(dims, payload, q.front()->s, n);
-    }
+    //if (w >= d) {
+      //add_new_leader(dims, payload, q.front()->s, n);
+    //}
     delete q.front();
     q.pop();
   }
+  std::cout << all_leaders.size() << "\n";
+  if (st.k_step == 1) return res;
+  else {
+    for (map<long long, long long>::iterator it = all_leaders.begin(); it != all_leaders.end(); ++it) { 
+      sift_through_buckets(it, buckets, st, d, dims, all_leaders);
+    }
+  }
 
-  list<set<long long>> res;
-
-  list<set<long long>>::iterator it = dims.begin();
+  list<vector<long long>>::iterator it = dims.begin();
   while (it != dims.end()) {
-    if (it->size() >= max) {
+    if (it->size() >= 2) {
       res.push_back(*it);
       ++it;
     }
@@ -113,13 +199,13 @@ long long replace_bits(int first, int second, long long v) {
   return (v ^ prev_f ^ prev_s) | ((prev_f != 0) ? 1LL << second : 0) | ((prev_s != 0) ? 1LL << first : 0);
 }
 
-RightPayload add_leaders_to_system_payload(RightPayload payload, set<long long> leaders) {
+RightPayload add_leaders_to_system_payload(RightPayload payload, vector<long long> leaders) {
   vector<long long> vec;
   vec.reserve(payload.codewords.size() + leaders.size());
   for_each(payload.codewords.begin(), payload.codewords.end(), [&vec](const long long &x) {
     vec.push_back(x);
   });
-  for (set<long long>::iterator it = leaders.begin(); it != leaders.end(); ++it) {
+  for (vector<long long>::iterator it = leaders.begin(); it != leaders.end(); ++it) {
     vec.push_back(*it);
   }
   for (int i = payload.codewords.size(); i < vec.size(); i++) {
