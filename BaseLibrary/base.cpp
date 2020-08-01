@@ -21,6 +21,7 @@ struct synd_entry {
   }
 };
 
+// BUCKET
 struct bucket {
   list<long long> leaders;
   long long ml;
@@ -49,11 +50,11 @@ int dist(long long a, long long b) {
   return d;
 }
 
+// BUCKET
 long long add_new_leader(long long leader, vector<bucket>& buckets, strategy_step st, long long bucket_num) {
-  //TODO: make it with my special bucket algorythm (add number of buckets and distance within one to strategy)
-  //Bucket algorythm: divide all leaders into buckets. Within one bucket all leaders are not further than specified distance from leader
-  //of the bucket. Bucket size is limited; add after exceedance only if cannot put into any other bucket
-  //- if leaders are distributed unevenly then rearrange(???? takes a lot of time).
+  // Bucket algorithm: divide all leaders into buckets. Within one bucket all leaders are not further than 
+  // specified distance(st.dist) from leader of the bucket. Bucket size is limited (st.msize); add after exceedance only 
+  // if cannot put into any other bucket - if leaders are distributed unevenly then rearrange(???? takes a lot of time).
   long long bucket_fits = -1;
   for (long long i = 0; i < buckets.size(); i++) {
     if (dist(buckets[i].ml, leader) <= st.dist) {
@@ -71,7 +72,7 @@ long long add_new_leader(long long leader, vector<bucket>& buckets, strategy_ste
     return buckets.size() - 1;
   } else {
     if (bucket_fits == -1) {
-      std::cout << "UNFITTABLE **** " << leader << "\n";
+      std::cout << "UNFITTABLE " << leader << "\n";
       throw -1;
     }
     buckets[bucket_fits].leaders.push_back(leader);
@@ -79,6 +80,7 @@ long long add_new_leader(long long leader, vector<bucket>& buckets, strategy_ste
   }
 }
 
+// BUCKET
 int check_and_update_dim(long long a, long long b, map<long long, long long> all_leaders, list<vector<long long>>& dims, int d) {
   long long c = a ^ b;
   int w = weight(c);
@@ -94,6 +96,7 @@ int check_and_update_dim(long long a, long long b, map<long long, long long> all
   return w;
 }
 
+// BUCKET
 void sift_through_buckets(map<long long, long long>::iterator it, vector<bucket> buckets, strategy_step st, int d, list<vector<long long>>& dims, map<long long, long long> all_leaders) {
   for (long long i = 0; i < buckets.size(); i++) {
     if (it->second != i) {
@@ -107,60 +110,26 @@ void sift_through_buckets(map<long long, long long>::iterator it, vector<bucket>
   }
 }
 
-list<vector<long long>> get_potential_leaders(vector<long long> H, RightPayload payload, strategy_step st, int d) {
-  queue<synd_entry*> q;
-  set<long long> was;
-  int r = payload.cols;
-  int actual_k = payload.rows;
-  int n = H.size();
-  long long nm = 1LL << (n - 1);
-  for (int i = 0; i < n; i++, nm >>= 1) {
-    q.push(new synd_entry(H[i], nm, 1, n-1-i));
-    was.insert(H[i]);
-  }
+void for_each_leader(long long iterator, long long end, vector<long long> H, queue<synd_entry*>& q, set<long long>& was, function<void(int w, long long s)> func) {
   int w = 1;
-  long long ns = n;
-  long long N = (1LL << r) - 1;
-  long long bucket_num = (N / st.msize);
-  list<long long> result;
-  map<long long, long long> all_leaders;
-  list<vector<long long>> dims;
-  vector<bucket> buckets;
-  if (st.k_step != 1) {
-    buckets.reserve(bucket_num);
-  }
-  list<vector<long long>> res;
-  int max = 0;
-  while (ns < N) {
+  int n = H.size();
+  while (iterator < end) {
     w++;
     //std::cout << w << endl;
     int q_s = q.size();
     for (int rrr = 0; rrr < q_s; rrr++) {
       synd_entry* el = q.front();
       for (int j = el->l + 1; j < n; j++) {
-        long long nr = el->s ^ H[n - 1 - j];
-        if (nr != 0) {
-          if (was.find(nr) == was.end()) {
+        long long s = el->s ^ H[n - 1 - j];
+        if (s != 0) {
+          if (was.find(s) == was.end()) {
             if (!(el->c & (1LL << j))) {
               long long c = el->c | (1LL << j);
-              if (w >= d) {
-                if (st.k_step == 1) {
-                  vector<long long> v;
-                  v.push_back(nr);
-                  res.push_back(v);
-                } else {
-                  all_leaders[nr] = add_new_leader(nr, buckets, st, bucket_num);
-                }
-                //std::cout << c << endl;
-                  //int v = add_new_leader(dims, payload, c, n);
-                  //if (v > max) {
-                    //max = v;
-                  //result.push_back(c);
-              }
-              q.push(new synd_entry(nr, c, w, j));
+              func(w, s);
+              q.push(new synd_entry(s, c, w, j));
             }
-            ns++;
-            was.insert(nr);
+            iterator++;
+            was.insert(s);
           }
         }
       }
@@ -169,14 +138,51 @@ list<vector<long long>> get_potential_leaders(vector<long long> H, RightPayload 
     }
   }
   while (!q.empty()) {
-    //if (w >= d) {
-      //add_new_leader(dims, payload, q.front()->s, n);
-    //}
     delete q.front();
     q.pop();
   }
+}
+
+list<vector<long long>> get_potential_leaders(vector<long long> H, RightPayload payload, strategy_step st, int d) {
+  queue<synd_entry*> q;
+  set<long long> was;
+
+  // Queue and was init
+  int r = payload.cols;
+  int n = H.size();
+  long long synd_count = (1LL << r) - 1;
+  long long cw = 1LL << (n - 1);
+  for (int i = 0; i < n; i++, cw >>= 1) {
+    q.push(new synd_entry(H[i], cw, 1, n - 1 - i));
+    was.insert(H[i]);
+  }
+
+  // Buckets creation
+  map<long long, long long> all_leaders;
+  list<vector<long long>> dims;
+  long long bucket_num = (synd_count / st.msize);
+  vector<bucket> buckets;
+  if (st.k_step != 1) {
+    buckets.reserve(bucket_num);
+  }
+
+  // Check all possible codeword leaders with non-zero unique syndroms
+  list<vector<long long>> res;
+  for_each_leader(n, synd_count, H, q, was, [d, st, &res, &all_leaders, &buckets, bucket_num](int w, long long s) {
+    if (w >= d) {
+      if (st.k_step == 1) {
+        vector<long long> v;
+        v.push_back(s);
+        res.push_back(v);
+      } else {
+        all_leaders[s] = add_new_leader(s, buckets, st, bucket_num);
+      }
+    }
+  });
+
   std::cout << all_leaders.size() << "\n";
   if (st.k_step == 1) return res;
+  // Use collected buckets to sift leaders through them
   else {
     for (map<long long, long long>::iterator it = all_leaders.begin(); it != all_leaders.end(); ++it) { 
       sift_through_buckets(it, buckets, st, d, dims, all_leaders);
@@ -273,20 +279,20 @@ int replace_and_get_next_coeff(map<int, vector<long long>>::iterator it, int i, 
   return st;
 }
 
-//bool update_print_set(set<map<int, vector<long long>>>& print_set, RightPayload p) {
-bool update_print_set(set<set<long long>>& print_set, set<map<int, int>>& map_set, RightPayload p, int d, bool easy_criteria) {
+bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, RightPayload p, int d, bool easy_criteria) {
+  // easy_criteria = true for comparing by weight map of all combinations of payload codewords
   if (easy_criteria) {
     map<int, int> weight_map;
     vector<long long> vec;
     set<long long> was;
     queue<synd_entry*> q;
-    int n = p.rows;
-    long long nm = 1LL << (n - 1);
+    int k = p.rows;
+    long long wrd = 1LL << (k - 1);
     int i = 0;
-    for (set<long long>::iterator it = p.codewords.begin(); it != p.codewords.end(); ++it) {
+    for (set<long long>::iterator it = p.codewords.begin(); it != p.codewords.end(); ++it, wrd >>= 1, i++) {
       int c = count_ones(*it, p.cols) + 1;
       vec.push_back(*it);
-      q.push(new synd_entry(*it, nm, 1, n - 1 - i));
+      q.push(new synd_entry(*it, wrd, 1, k - 1 - i));
       was.insert(*it);
       map<int, int>::iterator entry = weight_map.find(c);
       if (entry == weight_map.end()) {
@@ -294,49 +300,24 @@ bool update_print_set(set<set<long long>>& print_set, set<map<int, int>>& map_se
       } else {
         entry->second++;
       }
-      nm >>= 1;
-      i++;
     }
-    int w = 1;
-    long long ns = n;
-    long long N = (1LL << n) - 1;
-    while (ns < N) {
-      w++;
-      //std::cout << w << endl;
-      int q_s = q.size();
-      for (int rrr = 0; rrr < q_s; rrr++) {
-        synd_entry* el = q.front();
-        for (int j = el->l + 1; j < n; j++) {
-          long long nr = el->s ^ vec[n - 1 - j];
-          if (nr != 0) {
-            if (was.find(nr) == was.end()) {
-              if (!(el->c & (1LL << j))) {
-                long long c = el->c | (1LL << j);
-                int rc = count_ones(nr, p.cols) + w;
-                map<int, int>::iterator entry = weight_map.find(rc);
-                if (entry == weight_map.end()) {
-                  weight_map[rc] = 1;
-                } else {
-                  entry->second++;
-                }
-                q.push(new synd_entry(nr, c, w, j));
-              }
-              ns++;
-              was.insert(nr);
-            }
-          }
-        }
-        delete el;
-        q.pop();
+
+    // Fill weight_map with number of codewords for each weight from specified linear space
+    long long N = (1LL << k) - 1;
+    for_each_leader(k, N, vec, q, was, [p, &weight_map](int w, long long s) {
+      int rc = count_ones(s, p.cols) + w;
+      map<int, int>::iterator entry = weight_map.find(rc);
+      if (entry == weight_map.end()) {
+        weight_map[rc] = 1;
+      } else {
+        entry->second++;
       }
-    }
-    while (!q.empty()) {
-      delete q.front();
-      q.pop();
-    }
+    });
+
+    // Check if it was in map_set before
     if (map_set.find(weight_map) == map_set.end()) {
       map_set.insert(weight_map);
-      std::cout << "\nMAP: \n";
+      std::cout << "\nW MAP: \n";
       for (map<int, int>::iterator ittt = weight_map.begin(); ittt != weight_map.end(); ++ittt) {
         std::cout << ittt->first << " " << ittt->second << endl;
       }
@@ -345,7 +326,9 @@ bool update_print_set(set<set<long long>>& print_set, set<map<int, int>>& map_se
     } else {
       return false;
     }
+  // easy_criteria = false for comparing by col map of specially sorted payload codewords
   } else {
+    // Create map mp with weights as indices and codewords vectors as values
     map<int, vector<long long>> mp;
     for (set<long long>::iterator it = p.codewords.begin(); it != p.codewords.end(); ++it) {
       int c = count_ones(*it, p.cols) + 1;
@@ -359,6 +342,7 @@ bool update_print_set(set<set<long long>>& print_set, set<map<int, int>>& map_se
         entry->second.push_back(*it);
       }
     }
+    // Collect columns from mp into set
     set<long long> cds;
     for (int i = 0; i < p.cols; i++) {
       long long power = 1LL;
@@ -373,6 +357,7 @@ bool update_print_set(set<set<long long>>& print_set, set<map<int, int>>& map_se
       }
       cds.insert(el);
     }
+
     /*
     map<int, vector<long long>>::iterator it = mp.begin();
     int st = 0;
@@ -386,9 +371,11 @@ bool update_print_set(set<set<long long>>& print_set, set<map<int, int>>& map_se
       }
     }
     */
+
+    // Check if it was in print_set before
     if (print_set.find(cds) == print_set.end()) {
       print_set.insert(cds);
-      std::cout << "\nMAP: \n";
+      std::cout << "\nW MAP: \n";
       for (map<int, vector<long long>>::iterator ittt = mp.begin(); ittt != mp.end(); ++ittt) {
         std::cout << ittt->first << " " << ittt->second.size() << endl;
       }

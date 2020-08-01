@@ -25,8 +25,7 @@ int get_next_column_id(int prev_i, vector<vector<bool>>& my_vec, int col_size, i
   return prev_i;
 }
 
-//void stepMatrix(list<RightPayload>& result, RightPayload elem, int new_n, int d, set<map<int, vector<long long>>> codewords_set_set) {
-void stepMatrix(list<RightPayload>& result, RightPayload elem, int new_n, int d, set<set<long long>>& codewords_set_set, set<map<int, int>>& weight_map_set, strategy_step st) {
+void step_matrix(list<RightPayload>& result, RightPayload elem, int new_n, int d, set<set<long long>>& codewords_set_set, set<map<int, int>>& weight_map_set, strategy_step st) {
   int k = elem.rows;
   int old_n = elem.cols;
   int dn = new_n - old_n;
@@ -54,7 +53,7 @@ void stepMatrix(list<RightPayload>& result, RightPayload elem, int new_n, int d,
 
     for (list<vector<long long>>::iterator it = leaders.begin(); it != leaders.end(); ++it) {
       RightPayload new_matrix = add_leaders_to_system_payload(half_matrix, *it);
-      if (!update_print_set(codewords_set_set, weight_map_set, new_matrix, d, true)) {
+      if (!check_matrix(codewords_set_set, weight_map_set, new_matrix, d, true)) {
         continue;
       } else {
 	std::cout << "\n";
@@ -93,12 +92,11 @@ list<RightPayload> step_matrices(list<RightPayload> matrices, strategy_step st, 
   list<RightPayload> result;
   int new_pre_n = generate_new_n(matrices.back().rows, matrices.back().cols + matrices.back().rows, st.k_step, d) - matrices.back().rows;
   while (result.empty()) {
-    //set<map<int, vector<long long>>> codewords_set_set;
     set<set<long long>> codewords_set_set;
     set<map<int, int>> weight_map_set;
     int i = 1;
     for (RightPayload elem : matrices) {
-      stepMatrix(result, elem, new_pre_n, d, codewords_set_set, weight_map_set, st);
+      step_matrix(result, elem, new_pre_n, d, codewords_set_set, weight_map_set, st);
       std::cout << "Step " << i << " out of " << matrices.size() << " done\n";
       i++;
     }
