@@ -1,12 +1,12 @@
 executable usage:
-ctd <distance>
+ctd _distance_
 generates codes with maximum possible size and minimum length using hypothesis that these codes can be generated recursively
-ctd_reusable <input_file_path>
+ctd_reusable _input_file_path_
 does the same as ctd but uses input_file_path as recursion base with following format:
-<matrices_num> <rows_num> <cols_num> <distance>
-<Matrix_description_1>
-<Matrix_description_2>
+_matrices_num_ _rows_num_ _cols_num_ _distance_
+_Matrix_description_1_
+_Matrix_description_2_
 ...
-<Matrix_description_<matrices_num>>
+_Matrix_description_matrices_num_
 Matrix description is basically matrix itself written down with spaces inbetween 1s or 0s.
 There's example input.txt

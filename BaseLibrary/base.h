@@ -38,5 +38,5 @@ list<vector<long long>> get_potential_leaders(vector<long long> H, RightPayload 
 RightPayload add_leaders_to_system_payload(RightPayload payload, vector<long long> leaders);
 vector<long long> get_H_matrix(RightPayload p);
 //bool update_print_set(set<map<int, vector<long long>>>&, RightPayload);
-bool update_print_set(set<map<int, int>>&, RightPayload, int);
+bool update_print_set(set<set<long long>>&, set<map<int, int>>&, RightPayload, int, bool);
 list<RightPayload> read_list(const char* filename);

@@ -274,37 +274,128 @@ int replace_and_get_next_coeff(map<int, vector<long long>>::iterator it, int i, 
 }
 
 //bool update_print_set(set<map<int, vector<long long>>>& print_set, RightPayload p) {
-bool update_print_set(set<map<int, int>>& print_set, RightPayload p, int d) {
-  //map<int, vector<long long>> mp;
-  map<int, int> mp;
-  for (set<long long>::iterator it = p.codewords.begin(); it != p.codewords.end(); ++it) {
-    int c = count_ones(*it, p.cols);
-    //map<int, vector<long long>>::iterator entry = mp.find(c);
-    if (c < d - 1) return false;
-    map<int, int>::iterator entry = mp.find(c);
-    if (entry == mp.end()) {
-      mp[c] = 1;
+bool update_print_set(set<set<long long>>& print_set, set<map<int, int>>& map_set, RightPayload p, int d, bool easy_criteria) {
+  if (easy_criteria) {
+    map<int, int> weight_map;
+    vector<long long> vec;
+    set<long long> was;
+    queue<synd_entry*> q;
+    int n = p.rows;
+    long long nm = 1LL << (n - 1);
+    int i = 0;
+    for (set<long long>::iterator it = p.codewords.begin(); it != p.codewords.end(); ++it) {
+      int c = count_ones(*it, p.cols) + 1;
+      vec.push_back(*it);
+      q.push(new synd_entry(*it, nm, 1, n - 1 - i));
+      was.insert(*it);
+      map<int, int>::iterator entry = weight_map.find(c);
+      if (entry == weight_map.end()) {
+        weight_map[c] = 1;
+      } else {
+        entry->second++;
+      }
+      nm >>= 1;
+      i++;
+    }
+    int w = 1;
+    long long ns = n;
+    long long N = (1LL << n) - 1;
+    while (ns < N) {
+      w++;
+      //std::cout << w << endl;
+      int q_s = q.size();
+      for (int rrr = 0; rrr < q_s; rrr++) {
+        synd_entry* el = q.front();
+        for (int j = el->l + 1; j < n; j++) {
+          long long nr = el->s ^ vec[n - 1 - j];
+          if (nr != 0) {
+            if (was.find(nr) == was.end()) {
+              if (!(el->c & (1LL << j))) {
+                long long c = el->c | (1LL << j);
+                int rc = count_ones(nr, p.cols) + w;
+                map<int, int>::iterator entry = weight_map.find(rc);
+                if (entry == weight_map.end()) {
+                  weight_map[rc] = 1;
+                } else {
+                  entry->second++;
+                }
+                q.push(new synd_entry(nr, c, w, j));
+              }
+              ns++;
+              was.insert(nr);
+            }
+          }
+        }
+        delete el;
+        q.pop();
+      }
+    }
+    while (!q.empty()) {
+      delete q.front();
+      q.pop();
+    }
+    if (map_set.find(weight_map) == map_set.end()) {
+      map_set.insert(weight_map);
+      std::cout << "\nMAP: \n";
+      for (map<int, int>::iterator ittt = weight_map.begin(); ittt != weight_map.end(); ++ittt) {
+        std::cout << ittt->first << " " << ittt->second << endl;
+      }
+      std::cout << endl;
+      return true;
     } else {
-      entry->second++;
+      return false;
     }
-  }
-  /*
-  map<int, vector<long long>>::iterator it = mp.begin();
-  int st = 0;
-  int i = 0;
-  while (it != mp.end() && st != p.cols) {
-    st = replace_and_get_next_coeff(it, i, mp.end(), st, p.cols);
-    if (i < it->second.size() - 1) i++;
-    else {
-      ++it;
-      i = 0;
-    }
-  }
-  */
-  if (print_set.find(mp) == print_set.end()) {
-    print_set.insert(mp);
-    return true;
   } else {
-    return false;
+    map<int, vector<long long>> mp;
+    for (set<long long>::iterator it = p.codewords.begin(); it != p.codewords.end(); ++it) {
+      int c = count_ones(*it, p.cols) + 1;
+      if (c < d) return false;
+      map<int, vector<long long>>::iterator entry = mp.find(c);
+      if (entry == mp.end()) {
+        vector<long long> cur_vec;
+        cur_vec.push_back(*it);
+        mp[c] = cur_vec;
+      } else {
+        entry->second.push_back(*it);
+      }
+    }
+    set<long long> cds;
+    for (int i = 0; i < p.cols; i++) {
+      long long power = 1LL;
+      long long el = 0;
+      for (map<int, vector<long long>>::iterator it = mp.begin(); it != mp.end(); ++it) {
+        for (int j = 0; j < it->second.size(); j++) {
+          if (it->second[j] & (1LL << i)) {
+            el |= power;
+          }
+          power <<= 1;
+        }
+      }
+      cds.insert(el);
+    }
+    /*
+    map<int, vector<long long>>::iterator it = mp.begin();
+    int st = 0;
+    int i = 0;
+    while (it != mp.end() && st != p.cols) {
+      st = replace_and_get_next_coeff(it, i, mp.end(), st, p.cols);
+      if (i < it->second.size() - 1) i++;
+      else {
+        ++it;
+        i = 0;
+      }
+    }
+    */
+    if (print_set.find(cds) == print_set.end()) {
+      print_set.insert(cds);
+      std::cout << "\nMAP: \n";
+      for (map<int, vector<long long>>::iterator ittt = mp.begin(); ittt != mp.end(); ++ittt) {
+        std::cout << ittt->first << " " << ittt->second.size() << endl;
+      }
+      std::cout << endl;
+      return true;
+    } else {
+      return false;
+    }
   }
 }
