@@ -119,14 +119,14 @@ void for_each_leader(long long iterator, long long end, vector<long long> H, que
     int q_s = q.size();
     for (int rrr = 0; rrr < q_s; rrr++) {
       synd_entry* el = q.front();
-      for (int j = el->l + 1; j < n; j++) {
-        long long s = el->s ^ H[n - 1 - j];
+      for (int l = el->l + 1; l < n; l++) {
+        long long s = el->s ^ H[n - 1 - l];
         if (s != 0) {
           if (was.find(s) == was.end()) {
-            if (!(el->c & (1LL << j))) {
-              long long c = el->c | (1LL << j);
+            if (!(el->c & (1LL << l))) {
+              long long c = el->c | (1LL << l);
               func(w, s);
-              q.push(new synd_entry(s, c, w, j));
+              q.push(new synd_entry(s, c, w, l));
             }
             iterator++;
             was.insert(s);
@@ -143,12 +143,11 @@ void for_each_leader(long long iterator, long long end, vector<long long> H, que
   }
 }
 
-list<vector<long long>> get_potential_leaders(vector<long long> H, RightPayload payload, strategy_step st, int d) {
+list<vector<long long>> get_potential_leaders(const vector<long long>& H, int r, strategy_step st, int d) {
   queue<synd_entry*> q;
   set<long long> was;
 
   // Queue and was init
-  int r = payload.cols;
   int n = H.size();
   long long synd_count = (1LL << r) - 1;
   long long cw = 1LL << (n - 1);
@@ -205,13 +204,13 @@ long long replace_bits(int first, int second, long long v) {
   return (v ^ prev_f ^ prev_s) | ((prev_f != 0) ? 1LL << second : 0) | ((prev_s != 0) ? 1LL << first : 0);
 }
 
-RightPayload add_leaders_to_system_payload(RightPayload payload, vector<long long> leaders) {
+RightPayload add_leaders_to_system_payload(const RightPayload& payload, const vector<long long>& leaders) {
   vector<long long> vec;
   vec.reserve(payload.codewords.size() + leaders.size());
   for_each(payload.codewords.begin(), payload.codewords.end(), [&vec](const long long &x) {
     vec.push_back(x);
   });
-  for (vector<long long>::iterator it = leaders.begin(); it != leaders.end(); ++it) {
+  for (vector<long long>::const_iterator it = leaders.begin(); it != leaders.end(); ++it) {
     vec.push_back(*it);
   }
   for (int i = payload.codewords.size(); i < vec.size(); i++) {
@@ -233,16 +232,17 @@ RightPayload add_leaders_to_system_payload(RightPayload payload, vector<long lon
     }
   }
   long long power = 1LL << payload.cols - leaders.size();
-  set<long long> new_codewords;
   for (int i = 0; i < vec.size(); i++) {
     vec[i] %= power;
-    new_codewords.insert(vec[i]);
+    //new_codewords.insert(vec[i]);
   }
+  set<long long> new_codewords(vec.begin(), vec.end());
+
 
   return RightPayload(new_codewords, vec.size(), payload.cols - leaders.size(), payload.d);
 }
 
-int count_ones(long long v, int cols) {
+int count_w(long long v, int cols) {
   int r = 0;
   for (long long power = 1; power < (1LL << cols); power <<= 1) {
     if (power & v) r++;
@@ -250,6 +250,7 @@ int count_ones(long long v, int cols) {
   return r;
 }
 
+// MY EQUIV
 int replace_and_get_next_coeff(map<int, vector<long long>>::iterator it, int i, map<int, vector<long long>>::iterator m_end, int st, int cols) {
   if (it == m_end) return -1;
   int lg = cols - 1;
@@ -279,7 +280,7 @@ int replace_and_get_next_coeff(map<int, vector<long long>>::iterator it, int i, 
   return st;
 }
 
-bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, RightPayload p, int d, bool easy_criteria) {
+bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, const RightPayload& p, int d, bool easy_criteria) {
   // easy_criteria = true for comparing by weight map of all combinations of payload codewords
   if (easy_criteria) {
     map<int, int> weight_map;
@@ -290,25 +291,27 @@ bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, R
     long long wrd = 1LL << (k - 1);
     int i = 0;
     for (set<long long>::iterator it = p.codewords.begin(); it != p.codewords.end(); ++it, wrd >>= 1, i++) {
-      int c = count_ones(*it, p.cols) + 1;
+      int c_w = count_w(*it, p.cols) + 1;
       vec.push_back(*it);
+
       q.push(new synd_entry(*it, wrd, 1, k - 1 - i));
       was.insert(*it);
-      map<int, int>::iterator entry = weight_map.find(c);
+
+      map<int, int>::iterator entry = weight_map.find(c_w);
       if (entry == weight_map.end()) {
-        weight_map[c] = 1;
+        weight_map[c_w] = 1;
       } else {
         entry->second++;
       }
     }
 
     // Fill weight_map with number of codewords for each weight from specified linear space
-    long long N = (1LL << k) - 1;
-    for_each_leader(k, N, vec, q, was, [p, &weight_map](int w, long long s) {
-      int rc = count_ones(s, p.cols) + w;
-      map<int, int>::iterator entry = weight_map.find(rc);
+    long long wrd_count = (1LL << k) - 1;
+    for_each_leader(k, wrd_count, vec, q, was, [p, &weight_map](int w, long long s) {
+      int c_w = count_w(s, p.cols) + w;
+      map<int, int>::iterator entry = weight_map.find(c_w);
       if (entry == weight_map.end()) {
-        weight_map[rc] = 1;
+        weight_map[c_w] = 1;
       } else {
         entry->second++;
       }
@@ -331,13 +334,13 @@ bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, R
     // Create map mp with weights as indices and codewords vectors as values
     map<int, vector<long long>> mp;
     for (set<long long>::iterator it = p.codewords.begin(); it != p.codewords.end(); ++it) {
-      int c = count_ones(*it, p.cols) + 1;
-      if (c < d) return false;
-      map<int, vector<long long>>::iterator entry = mp.find(c);
+      int c_w = count_w(*it, p.cols) + 1;
+      if (c_w < d) return false;
+      map<int, vector<long long>>::iterator entry = mp.find(c_w);
       if (entry == mp.end()) {
         vector<long long> cur_vec;
         cur_vec.push_back(*it);
-        mp[c] = cur_vec;
+        mp[c_w] = cur_vec;
       } else {
         entry->second.push_back(*it);
       }
@@ -386,3 +389,4 @@ bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, R
     }
   }
 }
+

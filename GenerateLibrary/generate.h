@@ -4,4 +4,4 @@
 
 //template<class T>
 ///*__declspec(dllexport) */bool gen_next_binomial_with_reps(T*, int, T);
-list<RightPayload> step_matrices(list<RightPayload>, strategy_step, int);
+list<RightPayload> step_matrices(const list<RightPayload>& matrices, strategy_step st, int d);

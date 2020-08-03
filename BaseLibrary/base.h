@@ -17,7 +17,7 @@ public:
   set<long long> codewords;
   int rows, cols, d;
 
-  RightPayload(set<long long> codewords, int rows, int cols, int d);
+  RightPayload(set<long long>& codewords, int rows, int cols, int d);
   void add_word(long long word);
   void print();
 private:
@@ -37,8 +37,8 @@ public:
 private:
 };
 
-list<vector<long long>> get_potential_leaders(vector<long long> H, RightPayload payload, strategy_step st, int d);
-RightPayload add_leaders_to_system_payload(RightPayload payload, vector<long long> leaders);
-vector<long long> get_H_matrix(RightPayload p);
-bool check_matrix(set<set<long long>>&, set<map<int, int>>&, RightPayload, int, bool);
+list<vector<long long>> get_potential_leaders(const vector<long long>& H, int r, strategy_step st, int d);
+RightPayload add_leaders_to_system_payload(const RightPayload& payload, const vector<long long>& leaders);
+vector<long long> get_H_matrix(const RightPayload& p);
+bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, const RightPayload& p, int d, bool easy_criteria);
 list<RightPayload> read_list(const char* filename);

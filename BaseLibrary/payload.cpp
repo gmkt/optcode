@@ -1,6 +1,6 @@
 #include "base.h"
 
-RightPayload::RightPayload(set<long long> codewords, int rows, int cols, int d) {
+RightPayload::RightPayload(set<long long>& codewords, int rows, int cols, int d) {
   this->codewords = codewords;
   this->rows = rows;
   this->cols = cols;
@@ -23,12 +23,9 @@ void RightPayload::print() {
 }
 
 
-vector<long long> get_H_matrix(RightPayload p) {
-  vector<long long> result;//(p.cols + p.rows);
-  result.reserve(p.cols + p.rows);
-  for_each(p.codewords.begin(), p.codewords.end(), [&result](const long long &x) {
-    result.push_back(x);
-  });
+vector<long long> get_H_matrix(const RightPayload& p) {
+  vector<long long> result(p.cols + p.rows);
+  std::copy(p.codewords.begin(), p.codewords.end(), result.begin());
   long long val = 1LL << (p.cols - 1);
   for (int i = 0; i < p.cols; i++) {
     result.push_back(val);

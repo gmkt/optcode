@@ -25,7 +25,7 @@ int get_next_column_id(int prev_i, vector<vector<bool>>& my_vec, int col_size, i
   return prev_i;
 }
 
-void step_matrix(list<RightPayload>& result, RightPayload elem, int new_n, int d, set<set<long long>>& codewords_set_set, set<map<int, int>>& weight_map_set, strategy_step st) {
+void step_matrix(list<RightPayload>& result, const RightPayload& elem, int new_n, int d, set<set<long long>>& codewords_set_set, set<map<int, int>>& weight_map_set, strategy_step st) {
   int k = elem.rows;
   int old_n = elem.cols;
   int dn = new_n - old_n;
@@ -49,7 +49,7 @@ void step_matrix(list<RightPayload>& result, RightPayload elem, int new_n, int d
   do {
     keep_going = true;
     vector<long long> H = get_H_matrix(half_matrix);
-    list<vector<long long>> leaders = get_potential_leaders(H, half_matrix, st, d);
+    list<vector<long long>> leaders = get_potential_leaders(H, half_matrix.cols, st, d);
 
     for (list<vector<long long>>::iterator it = leaders.begin(); it != leaders.end(); ++it) {
       RightPayload new_matrix = add_leaders_to_system_payload(half_matrix, *it);
@@ -67,12 +67,12 @@ void step_matrix(list<RightPayload>& result, RightPayload elem, int new_n, int d
       half_matrix.codewords.clear();
       int i = 0;
       for_each(elem.codewords.begin(), elem.codewords.end(), [&half_matrix, &i, &my_vec, dn](const long long n){
-        long long w = 0;
+        long long rc = 0;
         long long step = 1;
         for (int j = dn - 2; j >= 0; j--, step <<= 1) {
-          if (my_vec[i][j]) w |= step;
+          if (my_vec[i][j]) rc |= step;
         }
-        half_matrix.codewords.insert((n << dn) + w);
+        half_matrix.codewords.insert((n << dn) + rc);
         i++;
       });
     } else return;
@@ -88,7 +88,7 @@ int generate_new_n(int k, int n, int k_step, int d) {
   return n;
 }
 
-list<RightPayload> step_matrices(list<RightPayload> matrices, strategy_step st, int d) {
+list<RightPayload> step_matrices(const list<RightPayload>& matrices, strategy_step st, int d) {
   list<RightPayload> result;
   int new_pre_n = generate_new_n(matrices.back().rows, matrices.back().cols + matrices.back().rows, st.k_step, d) - matrices.back().rows;
   while (result.empty()) {
