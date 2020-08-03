@@ -37,8 +37,17 @@ public:
 private:
 };
 
-list<vector<long long>> get_potential_leaders(const vector<long long>& H, int r, strategy_step st, int d);
-RightPayload add_leaders_to_system_payload(const RightPayload& payload, const vector<long long>& leaders);
-vector<long long> get_H_matrix(const RightPayload& p);
+struct my_arr {
+  long long* arr;
+  int size;
+  my_arr(long long* arr, int size) {
+    this->arr = arr;
+    this->size = size;
+  }
+};
+
+list<my_arr> get_potential_leaders(const my_arr& H, int r, strategy_step st, int d);
+RightPayload add_leaders_to_system_payload(const RightPayload& payload, const my_arr& leaders);
+my_arr get_H_matrix(const RightPayload& p);
 bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, const RightPayload& p, int d, bool easy_criteria);
 list<RightPayload> read_list(const char* filename);

@@ -81,15 +81,16 @@ long long add_new_leader(long long leader, vector<bucket>& buckets, strategy_ste
 }
 
 // BUCKET
-int check_and_update_dim(long long a, long long b, map<long long, long long> all_leaders, list<vector<long long>>& dims, int d) {
+// Only two leaders are supported
+int check_and_update_dim(long long a, long long b, map<long long, long long> all_leaders, list<my_arr>& dims, int d) {
   long long c = a ^ b;
   int w = weight(c);
   if (w >= d) {
     map<long long, long long>::iterator cur_it = all_leaders.find(c);
     if (cur_it != all_leaders.end()) {
-      vector<long long> v;
-      v.push_back(a);
-      v.push_back(b);
+      my_arr v(new long long[2], 2);
+      v.arr[0] = a;
+      v.arr[1] = b;
       dims.push_back(v);
     }
   }
@@ -97,7 +98,8 @@ int check_and_update_dim(long long a, long long b, map<long long, long long> all
 }
 
 // BUCKET
-void sift_through_buckets(map<long long, long long>::iterator it, vector<bucket> buckets, strategy_step st, int d, list<vector<long long>>& dims, map<long long, long long> all_leaders) {
+// Only two leaders are supported
+void sift_through_buckets(map<long long, long long>::iterator it, vector<bucket> buckets, strategy_step st, int d, list<my_arr>& dims, map<long long, long long> all_leaders) {
   for (long long i = 0; i < buckets.size(); i++) {
     if (it->second != i) {
       int w = check_and_update_dim(it->first, buckets[i].ml, all_leaders, dims, d);
@@ -110,17 +112,16 @@ void sift_through_buckets(map<long long, long long>::iterator it, vector<bucket>
   }
 }
 
-void for_each_leader(long long iterator, long long end, vector<long long> H, queue<synd_entry*>& q, set<long long>& was, function<void(int w, long long s)> func) {
+void for_each_leader(long long iterator, long long end, const my_arr& H, queue<synd_entry*>& q, set<long long>& was, function<void(int w, long long s)> func) {
   int w = 1;
-  int n = H.size();
   while (iterator < end) {
     w++;
     //std::cout << w << endl;
     int q_s = q.size();
     for (int rrr = 0; rrr < q_s; rrr++) {
       synd_entry* el = q.front();
-      for (int l = el->l + 1; l < n; l++) {
-        long long s = el->s ^ H[n - 1 - l];
+      for (int l = el->l + 1; l < H.size; l++) {
+        long long s = el->s ^ H.arr[H.size - 1 - l];
         if (s != 0) {
           if (was.find(s) == was.end()) {
             if (!(el->c & (1LL << l))) {
@@ -143,22 +144,22 @@ void for_each_leader(long long iterator, long long end, vector<long long> H, que
   }
 }
 
-list<vector<long long>> get_potential_leaders(const vector<long long>& H, int r, strategy_step st, int d) {
+list<my_arr> get_potential_leaders(const my_arr& H, int r, strategy_step st, int d) {
   queue<synd_entry*> q;
   set<long long> was;
 
   // Queue and was init
-  int n = H.size();
+  int n = H.size;
   long long synd_count = (1LL << r) - 1;
   long long cw = 1LL << (n - 1);
   for (int i = 0; i < n; i++, cw >>= 1) {
-    q.push(new synd_entry(H[i], cw, 1, n - 1 - i));
-    was.insert(H[i]);
+    q.push(new synd_entry(H.arr[i], cw, 1, n - 1 - i));
+    was.insert(H.arr[i]);
   }
 
   // Buckets creation
   map<long long, long long> all_leaders;
-  list<vector<long long>> dims;
+  list<my_arr> dims;
   long long bucket_num = (synd_count / st.msize);
   vector<bucket> buckets;
   if (st.k_step != 1) {
@@ -166,12 +167,12 @@ list<vector<long long>> get_potential_leaders(const vector<long long>& H, int r,
   }
 
   // Check all possible codeword leaders with non-zero unique syndroms
-  list<vector<long long>> res;
+  list<my_arr> res;
   for_each_leader(n, synd_count, H, q, was, [d, st, &res, &all_leaders, &buckets, bucket_num](int w, long long s) {
     if (w >= d) {
       if (st.k_step == 1) {
-        vector<long long> v;
-        v.push_back(s);
+        my_arr v(new long long[1], 1);
+        v.arr[0] = s;
         res.push_back(v);
       } else {
         all_leaders[s] = add_new_leader(s, buckets, st, bucket_num);
@@ -181,6 +182,7 @@ list<vector<long long>> get_potential_leaders(const vector<long long>& H, int r,
 
   std::cout << all_leaders.size() << "\n";
   if (st.k_step == 1) return res;
+  // TODO: optimize as it is too slow to be used after first iteration
   // Use collected buckets to sift leaders through them
   else {
     for (map<long long, long long>::iterator it = all_leaders.begin(); it != all_leaders.end(); ++it) { 
@@ -188,9 +190,9 @@ list<vector<long long>> get_potential_leaders(const vector<long long>& H, int r,
     }
   }
 
-  list<vector<long long>>::iterator it = dims.begin();
+  list<my_arr>::iterator it = dims.begin();
   while (it != dims.end()) {
-    if (it->size() >= 2) {
+    if (it->size >= 2) {
       res.push_back(*it);
       ++it;
     }
@@ -204,42 +206,43 @@ long long replace_bits(int first, int second, long long v) {
   return (v ^ prev_f ^ prev_s) | ((prev_f != 0) ? 1LL << second : 0) | ((prev_s != 0) ? 1LL << first : 0);
 }
 
-RightPayload add_leaders_to_system_payload(const RightPayload& payload, const vector<long long>& leaders) {
-  vector<long long> vec;
-  vec.reserve(payload.codewords.size() + leaders.size());
-  for_each(payload.codewords.begin(), payload.codewords.end(), [&vec](const long long &x) {
-    vec.push_back(x);
+RightPayload add_leaders_to_system_payload(const RightPayload& payload, const my_arr& leaders) {
+  my_arr vec(new long long[payload.codewords.size() + leaders.size], payload.codewords.size() + leaders.size);
+  int j = 0;
+  for_each(payload.codewords.begin(), payload.codewords.end(), [&j, &vec](const long long &x) {
+    vec.arr[j++] = x;
   });
-  for (vector<long long>::const_iterator it = leaders.begin(); it != leaders.end(); ++it) {
-    vec.push_back(*it);
+  for (int i = 0; i < leaders.size; i++) {
+    vec.arr[j++] = leaders.arr[i];
   }
-  for (int i = payload.codewords.size(); i < vec.size(); i++) {
+  delete[] leaders.arr;
+  for (int i = payload.codewords.size(); i < vec.size; i++) {
     int actual_coeff = (payload.cols - 1 - i + payload.codewords.size());
-    int x = get_min_coeff(actual_coeff, vec[i], payload.cols);
+    int x = get_min_coeff(actual_coeff, vec.arr[i], payload.cols);
     bool eq = (x == actual_coeff);
     if (!eq) {
-      vec[i] = replace_bits(x, actual_coeff, vec[i]);
+      vec.arr[i] = replace_bits(x, actual_coeff, vec.arr[i]);
     }
-    for (int j = 0; j < vec.size(); j++) {
+    for (int j = 0; j < vec.size; j++) {
       if (j != i) {
         if (!eq) {
-          vec[j] = replace_bits(x, actual_coeff, vec[j]);
+          vec.arr[j] = replace_bits(x, actual_coeff, vec.arr[j]);
         }
-        if (vec[j] & (1LL << actual_coeff)) {
-          vec[j] ^= vec[i];
+        if (vec.arr[j] & (1LL << actual_coeff)) {
+          vec.arr[j] ^= vec.arr[i];
         }
       }
     }
   }
-  long long power = 1LL << payload.cols - leaders.size();
-  for (int i = 0; i < vec.size(); i++) {
-    vec[i] %= power;
-    //new_codewords.insert(vec[i]);
+  long long power = 1LL << payload.cols - leaders.size;
+  set<long long> new_codewords;
+  for (int i = 0; i < vec.size; i++) {
+    vec.arr[i] %= power;
+    new_codewords.insert(vec.arr[i]);
   }
-  set<long long> new_codewords(vec.begin(), vec.end());
+  delete[] vec.arr;
 
-
-  return RightPayload(new_codewords, vec.size(), payload.cols - leaders.size(), payload.d);
+  return RightPayload(new_codewords, vec.size, payload.cols - leaders.size, payload.d);
 }
 
 int count_w(long long v, int cols) {
@@ -284,7 +287,7 @@ bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, c
   // easy_criteria = true for comparing by weight map of all combinations of payload codewords
   if (easy_criteria) {
     map<int, int> weight_map;
-    vector<long long> vec;
+    my_arr vec(new long long[p.codewords.size()], p.codewords.size());
     set<long long> was;
     queue<synd_entry*> q;
     int k = p.rows;
@@ -292,7 +295,7 @@ bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, c
     int i = 0;
     for (set<long long>::iterator it = p.codewords.begin(); it != p.codewords.end(); ++it, wrd >>= 1, i++) {
       int c_w = count_w(*it, p.cols) + 1;
-      vec.push_back(*it);
+      vec.arr[i] = *it;
 
       q.push(new synd_entry(*it, wrd, 1, k - 1 - i));
       was.insert(*it);

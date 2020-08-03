@@ -48,10 +48,11 @@ void step_matrix(list<RightPayload>& result, const RightPayload& elem, int new_n
   int prev_i = dn - 2;
   do {
     keep_going = true;
-    vector<long long> H = get_H_matrix(half_matrix);
-    list<vector<long long>> leaders = get_potential_leaders(H, half_matrix.cols, st, d);
+    my_arr H = get_H_matrix(half_matrix);
+    list<my_arr> leaders = get_potential_leaders(H, half_matrix.cols, st, d);
+    delete[] H.arr;
 
-    for (list<vector<long long>>::iterator it = leaders.begin(); it != leaders.end(); ++it) {
+    for (list<my_arr>::iterator it = leaders.begin(); it != leaders.end(); ++it) {
       RightPayload new_matrix = add_leaders_to_system_payload(half_matrix, *it);
       if (!check_matrix(codewords_set_set, weight_map_set, new_matrix, d, true)) {
         continue;

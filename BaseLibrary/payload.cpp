@@ -23,12 +23,15 @@ void RightPayload::print() {
 }
 
 
-vector<long long> get_H_matrix(const RightPayload& p) {
-  vector<long long> result(p.cols + p.rows);
-  std::copy(p.codewords.begin(), p.codewords.end(), result.begin());
+my_arr get_H_matrix(const RightPayload& p) {
+  my_arr H(new long long[p.cols + p.rows], p.cols + p.rows);
+  int j = 0;
+  for (set<long long>::const_iterator it = p.codewords.begin(); it != p.codewords.end(); ++it) {
+    H.arr[j++] = *it;
+  }
   long long val = 1LL << (p.cols - 1);
   for (int i = 0; i < p.cols; i++) {
-    result.push_back(val);
+    H.arr[j++] = val;
     val >>= 1;
   }
   /*std::cout << "\n";
@@ -40,7 +43,7 @@ vector<long long> get_H_matrix(const RightPayload& p) {
     }
     std::cout << "\n";
   });*/
-  return result;
+  return H;
 }
 
 
