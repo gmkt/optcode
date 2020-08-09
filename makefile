@@ -6,6 +6,12 @@ CodeTheoryDiploma: Main/source.o libs/libbound.so libs/libbase.so libs/libgenera
 CodeTheoryDiplomaReusable: Main/init.o libs/libbound.so libs/libbase.so libs/libgenerate.so
 	g++ -g -Llibs -lbase -lbound -lgenerate -o ctd_reusable Main/init.o
 
+SystematicFormProvider: SystematicFormProvider/systematic.o libs/libbase.so
+	g++ -g -Llibs -lbase -o get_systematic SystematicFormProvider/systematic.o
+
+SystematicFormProvider/systematic.o: SystematicFormProvider/systematic.cpp
+	g++ -g -fPIC -c SystematicFormProvider/systematic.cpp -o SystematicFormProvider/systematic.o
+
 Main/init.o: Main/init.cpp
 	g++ -g -c Main/init.cpp -o Main/init.o
 

@@ -1,7 +1,7 @@
 #include "base.h"
 #include <iostream>
 
-int get_min_coeff(int idx, long long word, int cols) {
+int get_min_coeff(int idx, long long word) {
   for (; idx > 0; idx--) {
     if (word & (1LL << idx)) {
       return idx;
@@ -218,7 +218,7 @@ RightPayload add_leaders_to_system_payload(const RightPayload& payload, const my
   delete[] leaders.arr;
   for (int i = payload.codewords.size(); i < vec.size; i++) {
     int actual_coeff = (payload.cols - 1 - i + payload.codewords.size());
-    int x = get_min_coeff(actual_coeff, vec.arr[i], payload.cols);
+    int x = get_min_coeff(actual_coeff, vec.arr[i]);
     bool eq = (x == actual_coeff);
     if (!eq) {
       vec.arr[i] = replace_bits(x, actual_coeff, vec.arr[i]);

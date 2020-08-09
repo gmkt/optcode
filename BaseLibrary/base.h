@@ -46,6 +46,9 @@ struct my_arr {
   }
 };
 
+int get_min_coeff(int idx, long long words);
+long long replace_bits(int i, int j, long long w);
+void replace_columns(int i, int j, vector<long long>& v);
 list<my_arr> get_potential_leaders(const my_arr& H, int r, strategy_step st, int d);
 RightPayload add_leaders_to_system_payload(const RightPayload& payload, const my_arr& leaders);
 my_arr get_H_matrix(const RightPayload& p);

@@ -22,6 +22,13 @@ void RightPayload::print() {
   });
 }
 
+void replace_columns(int i, int j, vector<long long>& v) {
+  if (i == j) return;
+  for_each (v.begin(), v.end(), [i, j] (long long& n) {
+    n = replace_bits(i, j, n);
+  });
+}
+
 
 my_arr get_H_matrix(const RightPayload& p) {
   my_arr H(new long long[p.cols + p.rows], p.cols + p.rows);

@@ -19,7 +19,6 @@
 # Providers
 BaseProvider/*
 BoundProvider/*
-SplanFormProvider/*
 Generator/*
 
 # Compiled Static libraries
@@ -31,3 +30,4 @@ Generator/*
 # Executables
 ctd
 ctd_reusable
+get_systematic
