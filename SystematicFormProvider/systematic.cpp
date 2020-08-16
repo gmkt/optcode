@@ -51,7 +51,8 @@ RightPayload readMatrix(const char *filename) {
 	temp_rows--;
 
 	// Populate matrix with numbers.
-	vector<long long> codewords(rows);
+	vector<long long> codewords;
+	codewords.reserve(rows);
 	for (int i = 0; i < rows; i++) {
           long long cw = 0;
           long long step = 1;
@@ -62,11 +63,11 @@ RightPayload readMatrix(const char *filename) {
 	}
         int k = 0;
         for_each(codewords.begin(), codewords.end(), [&k, &codewords, cols](long long& cw) {
-          int i = get_min_coeff(cols - k, cw);
-          replace_columns(k, i, codewords);
+          int i = get_min_coeff(cols - k - 1, cw);
+          replace_columns(cols - 1 - k, i, codewords);
           int cur_k = 0;
-          for_each(codewords.begin(), codewords.end(), [&cur_k, k](long long& wrd) {
-            if ((k != cur_k) && (wrd & (1LL << k))) wrd ^= (1LL << k);
+          for_each(codewords.begin(), codewords.end(), [&cur_k, cols, cw, k](long long& wrd) {
+            if ((k != cur_k) && (wrd & (1LL << (cols - 1 - k)))) wrd ^= cw;
             cur_k++;
           });
           k++;
