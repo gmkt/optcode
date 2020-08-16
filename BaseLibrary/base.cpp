@@ -237,8 +237,7 @@ RightPayload add_leaders_to_system_payload(const RightPayload& payload, const my
   long long power = 1LL << payload.cols - leaders.size;
   set<long long> new_codewords;
   for (int i = 0; i < vec.size; i++) {
-    vec.arr[i] %= power;
-    new_codewords.insert(vec.arr[i]);
+    new_codewords.insert(vec.arr[i] % power);
   }
   delete[] vec.arr;
 

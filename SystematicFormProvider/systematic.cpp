@@ -8,9 +8,12 @@ int main(int argc, char *argv[]) {
 	}
 
 	RightPayload result = readMatrix(argv[1]);
-	cout << "Input matrix: " << endl;
+	cout << "Input matrix in systematic form: " << endl;
         result.print();
         cout << endl;
+	set<set<long long>> ignored;
+	set<map<int, int>> ignored_map;
+	check_matrix(ignored, ignored_map, result, result.d, true);
 	/*SplanMatrix splm = turn_to_splan_form(&result);
 	cout << "1" << endl;
 	cout << *splm.get_matrix() << endl;
