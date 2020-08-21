@@ -54,7 +54,7 @@ void step_matrix(list<RightPayload>& result, const RightPayload& elem, int new_n
 
     for (list<my_arr>::iterator it = leaders.begin(); it != leaders.end(); ++it) {
       RightPayload new_matrix = add_leaders_to_system_payload(half_matrix, *it);
-      if (!check_matrix(codewords_set_set, weight_map_set, new_matrix, d, true)) {
+      if (!check_matrix(codewords_set_set, weight_map_set, new_matrix, d, false)) {
         continue;
       } else {
 	std::cout << "\n";

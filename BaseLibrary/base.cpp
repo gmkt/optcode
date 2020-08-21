@@ -282,6 +282,23 @@ int replace_and_get_next_coeff(map<int, vector<long long>>::iterator it, int i, 
   return st;
 }
 
+void rec_sort(vector<long long>& words, int l, int r, int i) {
+  if (i >= words.size()) return;
+  int old_l = l;
+  int old_r = r;
+  while (l != r) {
+    if (!(words[i] & (1LL << l))) l--;
+    else if (words[i] & (1LL << r)) r++;
+    else if (l != r) {
+      for (int j = i; j < words.size(); j++) {
+        words[j] = replace_bits(l, r, words[j]);
+      }
+    }
+  }
+  rec_sort(words, old_l, l, i + 1);
+  rec_sort(words, l, old_r, i + 1);
+}
+
 bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, const RightPayload& p, int d, bool easy_criteria) {
   // easy_criteria = true for comparing by weight map of all combinations of payload codewords
   if (easy_criteria) {
@@ -334,6 +351,26 @@ bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, c
   // easy_criteria = false for comparing by col map of specially sorted payload codewords
   } else {
     // Create map mp with weights as indices and codewords vectors as values
+    vector<long long> vec;
+    vec.reserve(p.codewords.size());
+    vector<long long> vec2;
+    vec2.reserve(p.codewords.size());
+    for (set<long long>::iterator it = p.codewords.begin(); it != p.codewords.end(); ++it) {
+      vec.push_back(*it);
+    }
+    do {
+      vec2.clear();
+      for_each(vec.begin(), vec.end(), [&vec2] (const long long& x) {
+        vec2.push_back(x);
+      });
+      rec_sort(vec, p.cols - 1, 0, 0);
+      std::sort(vec.begin(), vec.end());
+    } while (vec != vec2);
+    set<long long> result;
+    for_each(vec.begin(), vec.end(), [&result](const long long& x) {
+      result.insert(x);
+    });
+    /*
     map<int, vector<long long>> mp;
     for (set<long long>::iterator it = p.codewords.begin(); it != p.codewords.end(); ++it) {
       int c_w = count_w(*it, p.cols) + 1;
@@ -363,7 +400,6 @@ bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, c
       cds.insert(el);
     }
 
-    /*
     map<int, vector<long long>>::iterator it = mp.begin();
     int st = 0;
     int i = 0;
@@ -378,12 +414,12 @@ bool check_matrix(set<set<long long>>& print_set, set<map<int, int>>& map_set, c
     */
 
     // Check if it was in print_set before
-    if (print_set.find(cds) == print_set.end()) {
-      print_set.insert(cds);
-      std::cout << "\nW MAP: \n";
+    if (print_set.find(result) == print_set.end()) {
+      print_set.insert(result);
+      /*std::cout << "\nW MAP: \n";
       for (map<int, vector<long long>>::iterator ittt = mp.begin(); ittt != mp.end(); ++ittt) {
         std::cout << ittt->first << " " << ittt->second.size() << endl;
-      }
+      }*/
       std::cout << endl;
       return true;
     } else {
